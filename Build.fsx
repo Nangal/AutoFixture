@@ -9,6 +9,7 @@ open System.Text.RegularExpressions
 let releaseFolder = "Release"
 let nunitToolsFolder = "Packages/NUnit.Runners.2.6.2/tools"
 let nuGetOutputFolder = "NuGetPackages"
+let signKeyPath = FullName "Src/AutoFixture.snk"
 let solutionsToBuild = !! "Src/*.sln"
 let processorArchitecture = environVar "PROCESSOR_ARCHITECTURE"
 
@@ -62,15 +63,11 @@ Target "PatchAssemblyVersions" (fun _ ->
 )
 
 let build target configuration =
-    let keyFile =
-        match getBuildParam "signkey" with
-        | "" -> []
-        | x  -> [ "AssemblyOriginatorKeyFile", FullName x ]
-
-    let properties = keyFile @ [ "Configuration", configuration
-                                 "AssemblyVersion", buildVersion.assemblyVersion
-                                 "FileVersion", buildVersion.fileVersion
-                                 "InformationalVersion", buildVersion.nugetVersion ]
+    let properties = [ "Configuration", configuration
+                       "AssemblyOriginatorKeyFile", signKeyPath
+                       "AssemblyVersion", buildVersion.assemblyVersion
+                       "FileVersion", buildVersion.fileVersion
+                       "InformationalVersion", buildVersion.nugetVersion ]
 
     solutionsToBuild
     |> MSBuild "" target properties
