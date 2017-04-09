@@ -10,7 +10,7 @@ let releaseFolder = "Release"
 let nunitToolsFolder = "Packages/NUnit.Runners.2.6.2/tools"
 let nuGetOutputFolder = "NuGetPackages"
 let signKeyPath = FullName "Src/AutoFixture.snk"
-let solutionsToBuild = !! "Src/*.sln"
+let solutionsToBuild = !! "Src/AutoFixture.AllProjects.sln"
 
 type BuildVersionInfo = { assemblyVersion:string; fileVersion:string; nugetVersion:string }
 let calculateVersionFromGit buildNumber = 
