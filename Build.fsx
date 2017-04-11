@@ -3,12 +3,49 @@
 open Fake
 open Fake.Testing
 open System
+open System.Text.RegularExpressions
 
 let releaseFolder = "Release"
 let nunitToolsFolder = "Packages/NUnit.Runners.2.6.2/tools"
 let nuGetOutputFolder = "NuGetPackages"
 let solutionsToBuild = !! "Src/*.sln"
 let processorArchitecture = environVar "PROCESSOR_ARCHITECTURE"
+
+type BuildVersionInfo = { assemblyVersion:string; fileVersion:string; nugetVersion:string }
+let calculateVersionFromGit buildNumber = 
+    let desc = Git.CommandHelper.runSimpleGitCommand "" "describe --tags --long --match=v*"
+    // Example for regular: v3.50.2-288-g64fd5c5b, for prerelease: v3.50.2-alpha1-288-g64fd5c5b
+    let result = Regex.Match(desc, @"^v(?<maj>\d+)\.(?<min>\d+)\.(?<rev>\d+)(?<pre>-\w+\d*)?-(?<num>\d+)-g(?<sha>[a-z0-9]+)$", RegexOptions.IgnoreCase).Groups
+    let getMatch (name:string) = result.[name].Value
+
+    let major, minor, revision, preReleaseSuffix, commitsNum, sha = 
+        getMatch "maj" |> int, getMatch "min" |> int, getMatch "rev" |> int, getMatch "pre", getMatch "num" |> int, getMatch "sha"
+
+    
+    let assemblyVersion = sprintf "%d.%d.%d.0" major minor revision
+    let fileVersion = sprintf "%d.%d.%d.%d" major minor revision buildNumber
+    
+    // If pre-release commits suffix is absent and we are not on the tag, we speculatively increase revision version for semantic versioning.
+    // Build suffix is always appended to the end if we are not on the tag. NuGet compares strings lexically, so result will be valid.
+    // It appears that NuGet doesn't fully support SemVer 2.0, therefore we format commits number with 4 digits so lexical comparison will compare values correctly.
+    // We use different suffixes 'pre' and 'build' because for tags without pre-release suffix we increase revision, so it's much clear that it's a pre-release of non-existing version.
+    // Examples of output: v3.50.2-pre0001, v3.50.2-pre0215, v3.50.1-rc1-build0003, v3.50.1-rc3-build0035    
+    let nugetVersion = match commitsNum, preReleaseSuffix with
+                       | 0, _ -> sprintf "%d.%d.%d%s" major minor revision preReleaseSuffix
+                       | _, "" -> sprintf "%d.%d.%d-pre%04d" major minor (revision + 1) commitsNum
+                       | _ -> sprintf "%d.%d.%d%s-build%04d" major minor revision preReleaseSuffix commitsNum
+
+    { assemblyVersion=assemblyVersion; fileVersion=fileVersion; nugetVersion=nugetVersion }
+
+// Define global variable with version that should be used for the build. This data is required in the multiple targets, so is defined globally.
+// Please never name build parameter as "Version"" - it might be consumed by the MSBuild which break some tasks (e.g. NuGet restore)
+let buildVersion = match getBuildParamOrDefault "BuildVersion" "git" with
+                   | "git"       -> calculateVersionFromGit (getBuildParamOrDefault "BuildNumber" "0" |> int)
+                   | assemblyVer -> { assemblyVersion = assemblyVer
+                                      fileVersion = getBuildParamOrDefault "BuildFileVersion" assemblyVer
+                                      nugetVersion = getBuildParamOrDefault "BuildNugetVersion" assemblyVer }
+
+
 
 let build target configuration =
     let keyFile =
