@@ -3,6 +3,7 @@
 open Fake
 open Fake.Testing
 open System
+open System.Diagnostics;
 open System.Text.RegularExpressions
 
 let releaseFolder = "Release"
@@ -175,9 +176,7 @@ Target "CleanNuGetPackages" (fun _ ->
 )
 
 Target "NuGetPack" (fun _ ->
-    let version = "Src/AutoFixture/bin/Release/Ploeh.AutoFixture.dll"
-                  |> GetAssemblyVersion
-                  |> (fun v -> sprintf "%i.%i.%i" v.Major v.Minor v.Build)
+    let version = FileVersionInfo.GetVersionInfo("Src/AutoFixture/bin/Release/Ploeh.AutoFixture.dll").ProductVersion
 
     let nuSpecFiles = !! "NuGet/*.nuspec"
 
