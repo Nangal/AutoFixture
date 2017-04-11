@@ -47,6 +47,19 @@ let buildVersion = match getBuildParamOrDefault "BuildVersion" "git" with
 
 
 
+Target "PatchAssemblyVersions" (fun _ ->
+    printfn 
+        "Patching assembly versions. Assembly version: %s, File version: %s, NuGet version: %s" 
+        buildVersion.assemblyVersion 
+        buildVersion.fileVersion 
+        buildVersion.nugetVersion
+
+    let filesToPatch = !! "Src/*/Properties/AssemblyInfo.*"
+    ReplaceAssemblyInfoVersionsBulk filesToPatch (fun f -> { f with AssemblyVersion              = buildVersion.assemblyVersion
+                                                                    AssemblyFileVersion          = buildVersion.fileVersion
+                                                                    AssemblyInformationalVersion = buildVersion.nugetVersion })
+)
+
 let build target configuration =
     let keyFile =
         match getBuildParam "signkey" with
@@ -183,8 +196,9 @@ Target "CompleteBuild" (fun _ -> ())
 "CleanReleaseFolder" ==> "Verify"
 "CleanAll"           ==> "Verify"
 
-"Verify"    ==> "Build"
-"BuildOnly" ==> "Build"
+"Verify"                ==> "Build"
+"PatchAssemblyVersions" ==> "Build"
+"BuildOnly"             ==> "Build"
 
 "Build"    ==> "Test"
 "TestOnly" ==> "Test"
