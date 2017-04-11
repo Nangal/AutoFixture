@@ -205,10 +205,9 @@ Target "CompleteBuild" (fun _ -> ())
 "Build"    ==> "Test"
 "TestOnly" ==> "Test"
 
-"BuildOnly" ==> "TestOnly"
-
-"BuildOnly" ==> "BuildAndTestOnly"
-"TestOnly"  ==> "BuildAndTestOnly"
+"BuildOnly" 
+    ==> "TestOnly"
+    ==> "BuildAndTestOnly"
 
 "Test" ==> "CopyToReleaseFolder"
 
